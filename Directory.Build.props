@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>Fluxor</Authors>
+    <Company>Fluxor</Company>
+    <Product>Fluxor</Product>
+    <Description>Lightweight MediatR-style command and query pipeline with behaviors for .NET.</Description>
+    <PackageTags>mediatr;cqrs;commands;queries;pipeline;behaviors</PackageTags>
+    <!-- Set RepositoryUrl in Fluxor.csproj or via CI -p:RepositoryUrl=... on publish -->
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>embedded</DebugType>
+    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

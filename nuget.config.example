@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copy to nuget.config (repo root or solution folder) or merge into your user config:
+  %AppData%\NuGet\NuGet.Config
+
+  Replace YOUR_GITHUB_USERNAME and YOUR_GITHUB_ORG_OR_USER.
+  Use a Personal Access Token (classic) with read:packages (and repo if the package repo is private).
+-->
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+    <add key="github-fluxor" value="https://nuget.pkg.github.com/YOUR_GITHUB_ORG_OR_USER/index.json" />
+  </packageSources>
+  <packageSourceMapping>
+    <packageSource key="nuget.org">
+      <package pattern="*" />
+    </packageSource>
+    <packageSource key="github-fluxor">
+      <package pattern="Fluxor" />
+    </packageSource>
+  </packageSourceMapping>
+  <packageSourceCredentials>
+    <github-fluxor>
+      <add key="Username" value="YOUR_GITHUB_USERNAME" />
+      <add key="ClearTextPassword" value="YOUR_GITHUB_PAT" />
+    </github-fluxor>
+  </packageSourceCredentials>
+</configuration>

@@ -1,0 +1,124 @@
+name: Publish NuGet package
+
+# Publish stable versions when develop (or hotfix) is merged into main.
+# Version is calculated from Conventional Commits since the last tag (GitVersion).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Override version (e.g. 1.0.0). Leave empty to use GitVersion."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_NOLOGO: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: 6.x
+
+      - name: Calculate version (Conventional Commits)
+        id: gitversion
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.version == '' }}
+        uses: gittools/actions/gitversion/execute@v3
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.version }}" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${{ steps.gitversion.outputs.majorMinorPatch }}"
+          fi
+          if [[ -z "$VERSION" ]]; then
+            echo "Could not determine package version."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version: $VERSION"
+
+      - name: Skip if tag already exists
+        id: tag_check
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — nothing to publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pack
+        if: steps.tag_check.outputs.skip != 'true'
+        run: |
+          dotnet pack src/Fluxor.csproj \
+            --configuration Release \
+            --output ./artifacts \
+            -p:Version=${{ steps.version.outputs.version }} \
+            -p:RepositoryUrl=https://github.com/${{ github.repository }} \
+            -p:PackageProjectUrl=https://github.com/${{ github.repository }}
+
+      - name: Push to GitHub Packages
+        if: steps.tag_check.outputs.skip != 'true'
+        run: |
+          dotnet nuget push artifacts/*.nupkg \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key "${{ secrets.GITHUB_TOKEN }}" \
+            --skip-duplicate
+
+      - name: Push symbols
+        if: steps.tag_check.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          if compgen -G "artifacts/*.snupkg" > /dev/null; then
+            dotnet nuget push artifacts/*.snupkg \
+              --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+              --api-key "${{ secrets.GITHUB_TOKEN }}" \
+              --skip-duplicate
+          fi
+
+      - name: Create and push git tag
+        if: steps.tag_check.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          if [[ "${{ steps.tag_check.outputs.skip }}" == "true" ]]; then
+            echo "### No release" >> "$GITHUB_STEP_SUMMARY"
+            echo "Version **${{ steps.version.outputs.version }}** is already tagged. Merge commits that bump the version (see Conventional Commits)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Published **Fluxor ${{ steps.version.outputs.version }}**" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Tag: \`${{ steps.version.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Feed: \`https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json\`" >> "$GITHUB_STEP_SUMMARY"
+          fi
