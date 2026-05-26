@@ -21,7 +21,7 @@ Workflow: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
 
 **When you merge `develop` → `main`**, the workflow:
 
-1. Calculates the version from **Conventional Commits** since the last tag ([GitVersion](../GitVersion.yml)).
+1. Calculates the version from **Conventional Commits** since the last tag ([calculate-version.sh](../.github/scripts/calculate-version.sh)).
 2. Publishes **Fluxor** to GitHub Packages.
 3. Creates and pushes git tag **`vX.Y.Z`** automatically.
 

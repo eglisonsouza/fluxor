@@ -15,7 +15,7 @@ feature/* → develop → (PR) → main  →  GitHub Actions publishes NuGet + c
 
 ## How the version is calculated
 
-On every push to **`main`**, [GitVersion](https://gitversion.net/) reads commits since the **last tag** (`v*`) and applies [Conventional Commits](https://www.conventionalcommits.org/):
+On every push to **`main`**, the workflow script [`.github/scripts/calculate-version.sh`](../.github/scripts/calculate-version.sh) reads commits since the **last tag** (`v*`) and applies [Conventional Commits](https://www.conventionalcommits.org/):
 
 | Commit message | Version bump |
 |----------------|--------------|
@@ -24,7 +24,7 @@ On every push to **`main`**, [GitVersion](https://gitversion.net/) reads commits
 | `feat!:` or `fix!:` or footer `BREAKING CHANGE:` | **Major** (e.g. 1.0.0 → 2.0.0) |
 | `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, etc. | **No bump** |
 
-Configuration: [`GitVersion.yml`](../GitVersion.yml).
+Logic lives in [`.github/scripts/calculate-version.sh`](../.github/scripts/calculate-version.sh) (no GitVersion dependency).
 
 ### Examples (use on `develop`; they count when merged to `main`)
 
@@ -51,11 +51,11 @@ docs: packaging guide
    - Creates annotated git tag **`v1.2.0`** on `main`.
 4. If the version did not change (only `chore:` / `docs:` since last tag), the tag already exists → **publish is skipped** (no duplicate release).
 
-First release starts from `next-version: 0.1.0` in `GitVersion.yml` until the first tag is created.
+First release starts at **`0.1.0`** when there is no tag yet.
 
-## `develop` pre-release versions
+## `develop` branch
 
-On `develop`, GitVersion would produce versions like `1.1.0-beta.4` locally, but **CI does not publish** from `develop`—only validates the build.
+CI on `develop` only **builds**—it does not publish or create tags.
 
 ## Tips
 
