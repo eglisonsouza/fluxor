@@ -12,3 +12,4 @@ dotnet build src/Fluxor.csproj
 
 - **[docs/VERSIONING.md](docs/VERSIONING.md)** — `develop` → `main`, Conventional Commits, auto tags
 - **[docs/PACKAGING.md](docs/PACKAGING.md)** — GitHub Packages, PAT, Visual Studio NuGet
+- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Actions not running, skipped releases, failed publish
