@@ -12,7 +12,7 @@ This guide covers publishing **Fluxor** to a **private GitHub** repository’s *
 
 Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 
-- Runs on pushes to **`develop`** and on PRs to **`main`** / **`develop`**.
+- Runs on pushes to **`main`** / **`develop`** and on PRs targeting those branches.
 - Builds and packs (artifact only)—does **not** publish.
 
 ## Publish to GitHub Packages (merge to `main`)

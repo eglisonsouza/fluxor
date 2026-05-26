@@ -4,8 +4,8 @@
 
 | Branch | Role | CI | Publish |
 |--------|------|-----|---------|
-| `develop` | Day-to-day development | Build on push | No |
-| `main` | Production / releases | — | **Publish + git tag** on push (after merge) |
+| `develop` | Day-to-day development | **CI** on push | No |
+| `main` | Production / releases | **CI** on push | **Publish + git tag** on push (after merge) |
 
 Typical flow:
 
