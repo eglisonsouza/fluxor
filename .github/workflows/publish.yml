@@ -1,6 +1,5 @@
 name: Publish NuGet package
 
-# On merge/push to main: version from Conventional Commits → NuGet publish → git tag vX.Y.Z
 on:
   push:
     branches: [main]
@@ -10,6 +9,11 @@ on:
         description: "Override version (e.g. 1.0.0). Leave empty for Conventional Commits."
         required: false
         type: string
+      force:
+        description: "Publish even if no feat/fix/breaking commit (use with version override)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,6 +22,7 @@ permissions:
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_NOLOGO: true
+  PACKAGE_SOURCE: https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
 
 jobs:
   publish:
@@ -34,6 +39,13 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - name: Print environment
+        run: |
+          dotnet --info
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
 
       - name: Calculate version (Conventional Commits)
         id: semver
@@ -52,28 +64,34 @@ jobs:
             VERSION="${{ steps.semver.outputs.version }}"
           fi
           if [[ -z "$VERSION" ]]; then
-            echo "Could not determine package version."
+            echo "::error::Could not determine package version."
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "Publishing version: $VERSION"
 
-      - name: Skip if nothing to release
-        id: tag_check
+      - name: Decide whether to release
+        id: release
         shell: bash
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           BUMP="${{ steps.semver.outputs.bump }}"
+          FORCE="${{ inputs.force }}"
 
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists — skipping publish."
+            echo "::notice::Tag $TAG already exists — skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [[ "${{ github.event_name }}" != "workflow_dispatch" && "${BUMP}" == "none" && -n "$(git tag -l 'v*')" ]]; then
-            echo "No feat/fix/breaking commits since last tag — skipping publish."
+          if [[ "$FORCE" == "true" ]]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "${{ github.event_name }}" != "workflow_dispatch" && "$BUMP" == "none" && -n "$(git tag -l 'v*')" ]]; then
+            echo "::warning::No feat/fix/breaking commits since last tag. Release skipped."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -81,7 +99,7 @@ jobs:
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Pack
-        if: steps.tag_check.outputs.skip != 'true'
+        if: steps.release.outputs.skip != 'true'
         run: |
           dotnet pack src/Fluxor.csproj \
             --configuration Release \
@@ -90,42 +108,82 @@ jobs:
             -p:RepositoryUrl=https://github.com/${{ github.repository }} \
             -p:PackageProjectUrl=https://github.com/${{ github.repository }}
 
+      - name: List artifacts
+        if: steps.release.outputs.skip != 'true'
+        run: ls -la artifacts/
+
       - name: Push to GitHub Packages
-        if: steps.tag_check.outputs.skip != 'true'
+        if: steps.release.outputs.skip != 'true'
         run: |
           dotnet nuget push artifacts/*.nupkg \
-            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --source "$PACKAGE_SOURCE" \
             --api-key "${{ secrets.GITHUB_TOKEN }}" \
             --skip-duplicate
 
       - name: Push symbols
-        if: steps.tag_check.outputs.skip != 'true'
+        if: steps.release.outputs.skip != 'true'
         continue-on-error: true
         run: |
           if compgen -G "artifacts/*.snupkg" > /dev/null; then
             dotnet nuget push artifacts/*.snupkg \
-              --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+              --source "$PACKAGE_SOURCE" \
               --api-key "${{ secrets.GITHUB_TOKEN }}" \
               --skip-duplicate
           fi
 
-      - name: Create and push git tag
-        if: steps.tag_check.outputs.skip != 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.version }}"
-          git push origin "${{ steps.version.outputs.tag }}"
+      - name: Create git tag
+        if: steps.release.outputs.skip != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.version.outputs.tag }}';
+            const version = '${{ steps.version.outputs.version }}';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const sha = context.sha;
+
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: `tags/${tag}` });
+              core.info(`Tag ${tag} already exists.`);
+              return;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+            const tagObj = await github.rest.git.createTag({
+              owner,
+              repo,
+              tag,
+              message: `Release ${version}`,
+              object: sha,
+              type: 'commit'
+            });
+
+            await github.rest.git.createRef({
+              owner,
+              repo,
+              ref: `refs/tags/${tag}`,
+              sha: tagObj.data.sha
+            });
+
+            core.info(`Created tag ${tag} on ${sha}`);
 
       - name: Summary
         if: always()
         shell: bash
         run: |
-          if [[ "${{ steps.tag_check.outputs.skip }}" == "true" ]]; then
+          if [[ "${{ steps.release.outputs.skip }}" == "true" ]]; then
             echo "### No release" >> "$GITHUB_STEP_SUMMARY"
-            echo "No new version to publish. Use \`feat:\`, \`fix:\`, or a breaking change in commits merged to \`main\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "Workflow ran but **nothing was published**." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Common causes:" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Merge commit only had \`chore:\` / \`docs:\` (no \`feat:\` or \`fix:\` since last tag)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Tag \`${{ steps.version.outputs.tag }}\` already exists" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**Fix:** merge a commit with \`feat:\` or \`fix:\`, or run this workflow manually with a version." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### Published **Fluxor ${{ steps.version.outputs.version }}**" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Published **fluxor ${{ steps.version.outputs.version }}**" >> "$GITHUB_STEP_SUMMARY"
             echo "- Tag: \`${{ steps.version.outputs.tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Install: \`dotnet add package fluxor --version ${{ steps.version.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
             echo "- Feed: \`https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json\`" >> "$GITHUB_STEP_SUMMARY"
           fi

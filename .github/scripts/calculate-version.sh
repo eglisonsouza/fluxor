@@ -13,40 +13,34 @@ if [[ -z "$LAST_TAG" ]]; then
   MAJOR=$DEFAULT_MAJOR
   MINOR=$DEFAULT_MINOR
   PATCH=$DEFAULT_PATCH
-  RANGE="HEAD"
+  LOG_RANGE="--no-merges"
 else
   VERSION_STR="${LAST_TAG#v}"
   IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_STR"
-  RANGE="${LAST_TAG}..HEAD"
+  LOG_RANGE="${LAST_TAG}..HEAD --no-merges"
 fi
 
 BUMP="none"
 
-mapfile -t SUBJECTS < <(git log "$RANGE" --pretty=format:%s 2>/dev/null || true)
-
-for subject in "${SUBJECTS[@]}"; do
+while IFS= read -r subject; do
   [[ -z "$subject" ]] && continue
 
-  # feat!, fix!, type(scope)!:, or +semver: breaking
-  if [[ "$subject" =~ ^[a-zA-Z]+(\([^)]+\))?!: ]] \
-    || [[ "$subject" =~ ^\+semver:\s?(breaking|major) ]]; then
+  if echo "$subject" | grep -qiE '^[a-zA-Z]+(\([^)]+\))?!:|^\+semver:\s?(breaking|major)'; then
     BUMP="major"
     break
   fi
 
-  if [[ "$subject" =~ ^feat(\([^)]+\))?: ]]; then
+  if echo "$subject" | grep -qiE '^feat(\([^)]+\))?:'; then
     [[ "$BUMP" != "major" ]] && BUMP="minor"
   fi
 
-  if [[ "$subject" =~ ^fix(\([^)]+\))?: ]]; then
+  if echo "$subject" | grep -qiE '^fix(\([^)]+\))?:'; then
     [[ "$BUMP" == "none" ]] && BUMP="patch"
   fi
-
-  # chore, docs, ci, refactor, test, build, style, perf — no bump
-done
+done < <(git log $LOG_RANGE --pretty=format:%s 2>/dev/null || true)
 
 if [[ "$BUMP" != "major" ]]; then
-  if git log "$RANGE" --pretty=format:%B 2>/dev/null | grep -qiE 'BREAKING CHANGE'; then
+  if git log $LOG_RANGE --pretty=format:%B 2>/dev/null | grep -qiE 'BREAKING CHANGE'; then
     BUMP="major"
   fi
 fi
@@ -77,4 +71,6 @@ TAG="v${VERSION}"
   echo "bump=${BUMP}"
 } >> "${GITHUB_OUTPUT}"
 
-echo "Calculated version: ${VERSION} (bump: ${BUMP}, range: ${RANGE:-HEAD}, last tag: ${LAST_TAG:-none})"
+echo "Calculated version: ${VERSION} (bump: ${BUMP}, last tag: ${LAST_TAG:-none})"
+echo "Commits considered:"
+git log $LOG_RANGE --oneline 2>/dev/null || true
