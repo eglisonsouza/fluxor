@@ -4,8 +4,8 @@
     <Authors>Fluxor</Authors>
     <Company>Fluxor</Company>
     <Product>Fluxor</Product>
-    <Description>Lightweight MediatR-style command and query pipeline with behaviors for .NET.</Description>
-    <PackageTags>mediatr;cqrs;commands;queries;pipeline;behaviors</PackageTags>
+    <Description>Lightweight command and query pipeline with behaviors for .NET.</Description>
+    <PackageTags>cqrs;commands;queries;pipeline;behaviors;middleware</PackageTags>
     <!-- Set RepositoryUrl in Fluxor.csproj or via CI -p:RepositoryUrl=... on publish -->
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
