@@ -1,6 +1,6 @@
 # Fluxor
 
-Lightweight [**MediatR**](https://github.com/jbogard/MediatR)-style command pipeline for .NET with pluggable **behaviors** (middleware). Send commands through a single entry point, resolve handlers from DI, and wrap execution with cross-cutting concerns such as logging.
+Lightweight command pipeline for .NET with pluggable **behaviors** (middleware). Send commands through a single entry point, resolve handlers from DI, and wrap execution with cross-cutting concerns such as logging.
 
 | | |
 |---|---|
@@ -22,7 +22,7 @@ Lightweight [**MediatR**](https://github.com/jbogard/MediatR)-style command pipe
 
 ## Installation
 
-The package is published to **GitHub Packages** (private feed). You need a GitHub Personal Access Token with `read:packages` (and `repo` if the repository is private).
+The package is published to **GitHub Packages** on the public repository [eglisonsouza/fluxor](https://github.com/eglisonsouza/fluxor). For restore from the GitHub feed, use a Personal Access Token with the **`read:packages`** scope.
 
 ### Visual Studio
 
@@ -274,15 +274,9 @@ If workflows do not start or show **“Failed to queue workflow run”**, check 
 
 ---
 
-## Comparison with MediatR
+## Design goals
 
-| | MediatR | Fluxor |
-|---|---------|--------|
-| Scope | Commands, queries, notifications, pipelines | Commands + behaviors (queries as contracts) |
-| DI | Optional extensions | `Microsoft.Extensions.DependencyInjection` |
-| Size | Full-featured | Small, focused library |
-
-Fluxor is intended for projects that want a **simple command pipeline** without taking a dependency on the full MediatR surface area.
+Fluxor is a **small, focused** library: command dispatch, handler resolution via DI, and a behavior pipeline—without extra ceremony. Query contracts (`IQuery`, `IQueryHandler`) are included for consistent read-side handlers; command pipeline execution is the core feature today.
 
 ---
 
