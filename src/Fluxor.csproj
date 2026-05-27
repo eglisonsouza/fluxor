@@ -6,10 +6,10 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Fluxor</RootNamespace>
     <AssemblyName>Fluxor</AssemblyName>
-    <PackageId>Fluxor</PackageId>
+    <!-- GitHub Packages requires a lowercase package id -->
+    <PackageId>fluxor</PackageId>
     <Title>Fluxor</Title>
-    <!-- Set in CI from git tag (e.g. v1.0.0 → 1.0.0). Override locally: dotnet pack -p:Version=0.2.0 -->
-    <RepositoryUrl Condition="'$(RepositoryUrl)' == ''">https://github.com/YOUR_GITHUB_ORG_OR_USER/fluxor</RepositoryUrl>
+    <RepositoryUrl Condition="'$(RepositoryUrl)' == ''">https://github.com/eglisonsouza/fluxor</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
