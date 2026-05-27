@@ -1,8 +1,20 @@
 # Troubleshooting GitHub Actions
 
+## “Failed to queue workflow run. Please try again.”
+
+This error appears **before** the workflow starts (nothing in the run list). Check:
+
+1. **Settings → Actions → General** → allow **Actions** for this repository.
+2. **Workflow permissions** → **Read and write permissions** (not read-only).
+3. **Organization / account billing** — private repos need Actions minutes (free tier has a limit). For org `egilson-souza`, check **Organization Settings → Billing**.
+4. When clicking **Run workflow**, select branch **`main`** (workflows are read from the default branch).
+5. Enter **version** (e.g. `0.1.0`) — manual runs require a version string.
+6. Wait a few minutes and retry (GitHub sometimes returns this error temporarily).
+7. Merge the latest `publish.yml` to **`main`** (older files with `boolean` inputs can fail to queue).
+
 ## Workflows do not appear or never start
 
-1. Open **https://github.com/eglisonsouza/fluxor/actions**
+1. Open your repo **Actions** tab.
 2. If you see “Workflows aren’t being run on this repository”, enable **Actions** under **Settings → Actions → General**.
 3. Workflow files must exist on **`main`**. Merging a PR that only adds workflows will start Actions from that merge onward.
 4. A commit message containing **`[skip ci]`** or **`[skip actions]`** skips runs.
@@ -44,10 +56,10 @@ Both run on every push to **`main`**:
 
 ## Manual first release
 
-1. **Actions** → **Publish NuGet package** → **Run workflow**
-2. Branch: `main`
-3. Version: `0.1.0`
-4. Force: `true` (if there are no `feat`/`fix` commits yet)
-5. Run
+1. Merge latest workflow fixes to **`main`**.
+2. **Actions** → **Publish NuGet package** → **Run workflow**
+3. Branch: **`main`**
+4. Version: **`0.1.0`**
+5. **Run workflow**
 
 This creates tag `v0.1.0` and package **fluxor** `0.1.0`.
